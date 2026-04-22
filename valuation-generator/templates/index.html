@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Radiant Intelligence™ — Valuation Report Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0C1220;
+      --navy2: #111827;
+      --card: #131c2e;
+      --border: #1e2d47;
+      --gold: #B8975A;
+      --gold-light: #d4b87a;
+      --text: #e8e4dc;
+      --text-dim: #8a96aa;
+    }
+
+    body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .brand-badge {
+      display: inline-block;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      padding: 5px 14px;
+      margin-bottom: 16px;
+    }
+    .brand-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32px;
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .brand-subtitle {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 36px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    select, input[type="file"] {
+      width: 100%;
+      background: var(--navy);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select:focus, input[type="file"]:focus {
+      border-color: var(--gold);
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23B8975A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--gold);
+      background: rgba(184,151,90,0.04);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border: none;
+    }
+    .drop-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: var(--gold);
+    }
+    .drop-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .drop-hint {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+    .drop-filename {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--gold);
+      margin-top: 10px;
+      display: none;
+    }
+
+    .btn {
+      width: 100%;
+      background: var(--gold);
+      color: var(--navy);
+      border: none;
+      padding: 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      font-weight: 500;
+    }
+    .btn:hover { background: var(--gold-light); }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled {
+      background: var(--border);
+      color: var(--text-dim);
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      display: none;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .status.loading {
+      display: block;
+      color: var(--gold);
+      background: rgba(184,151,90,0.08);
+      border: 1px solid rgba(184,151,90,0.3);
+    }
+    .status.error {
+      display: block;
+      color: #f87171;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.3);
+    }
+    .status.success {
+      display: block;
+      color: #4ade80;
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.3);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .footer-note span {
+      color: var(--gold);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="brand">
+      <div class="brand-badge">⚡ RADIANT INTELLIGENCE™</div>
+      <div class="brand-title">Valuation Report<br/>Generator</div>
+      <div class="brand-subtitle">Upload a Bayut TruEstimate™ PDF to generate a<br/>branded Radiant Intelligence™ client report.</div>
+    </div>
+
+    <div class="card">
+      <form id="reportForm" enctype="multipart/form-data">
+
+        <div class="form-group">
+          <label>AGENT NAME</label>
+          <select name="agent" required>
+            {% for agent in agents %}
+            <option value="{{ agent }}">{{ agent }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>TRUESTIMATE™ PDF</label>
+          <div class="drop-zone" id="dropZone">
+            <input type="file" name="pdf" id="pdfInput" accept=".pdf" required/>
+            <div class="drop-icon">📄</div>
+            <div class="drop-label">Drop TruEstimate PDF here or click to browse</div>
+            <div class="drop-hint">BAYUT TRUESTIMATE™ · SALES OR RENTAL</div>
+            <div class="drop-filename" id="dropFilename"></div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <button type="submit" class="btn" id="submitBtn">GENERATE REPORT</button>
+        <div class="status" id="status"></div>
+
+      </form>
+    </div>
+
+    <div class="footer-note">
+      Powered by <span>Radiant Intelligence™</span> · radiantrealtors.ae
+    </div>
+
+  </div>
+
+  <script>
+    const form = document.getElementById('reportForm');
+    const pdfInput = document.getElementById('pdfInput');
+    const dropZone = document.getElementById('dropZone');
+    const dropFilename = document.getElementById('dropFilename');
+    const submitBtn = document.getElementById('submitBtn');
+    const status = document.getElementById('status');
+
+    // File name display
+    pdfInput.addEventListener('change', () => {
+      if (pdfInput.files[0]) {
+        dropFilename.textContent = '✓ ' + pdfInput.files[0].name;
+        dropFilename.style.display = 'block';
+      }
+    });
+
+    // Drag & drop styling
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', () => dropZone.classList.remove('drag-over'));
+
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!pdfInput.files[0]) {
+        showStatus('error', 'Please select a TruEstimate™ PDF first.');
+        return;
+      }
+
+      const formData = new FormData(form);
+      submitBtn.disabled = true;
+      showStatus('loading', '⚡ Generating Radiant Intelligence™ report...');
+
+      try {
+        const res = await fetch('/generate', { method: 'POST', body: formData });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+          showStatus('error', '✗ ' + (err.error || 'Generation failed. Please try again.'));
+          return;
+        }
+
+        // Trigger download
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const fnMatch = disposition.match(/filename="?([^";\n]+)"?/);
+        a.download = fnMatch ? fnMatch[1] : 'Radiant_Intelligence_Report.pdf';
+        a.href = url;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showStatus('success', '✓ Report generated and downloaded successfully.');
+      } catch (err) {
+        showStatus('error', '✗ Network error. Is the server running?');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    function showStatus(type, msg) {
+      status.className = 'status ' + type;
+      status.textContent = msg;
+    }
+  </script>
+</body>
+</html>
