@@ -237,6 +237,7 @@
         <div class="form-group">
           <label>AGENT NAME</label>
           <select name="agent" required>
+            <option value="" disabled selected>Select agent</option>
             {% for agent in agents %}
             <option value="{{ agent }}">{{ agent }}</option>
             {% endfor %}
