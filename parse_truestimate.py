@@ -202,17 +202,22 @@ def parse(pdf_path: str) -> dict:
     data['total_acquisition']    = int(sale_val + dld + agency + reg + mortgage_reg + mortgage_val + bank_fee) if sale_val else None
 
     # ── Comparable sales ──────────────────────────────────────────────────────
-    # Format A (newer, single line): "4th Oct 2024 Pearlz by Danube 2 1119.88 AED 1,514,000"
-    # Format B (older, 3 lines):     "11th Feb" / "Building 1 904 AED 1,050,000" / "2026"
+    # Format A (single line): "4th Oct 2024 Pearlz by Danube 2 1119.88 AED 1,514,000"
+    # Format B (3 lines):     "11th Feb" / "Building 1 904 AED 1,050,000" / "2026"
+    # Format C (4 lines):     "25th Nov Riah Towers" / "1 1107 AED 1,350,000" / "2025" / "HIGHLY SIMILAR"
     sales = []
     in_sales = False
 
-    # Single-line pattern: date + address + beds + area + AED price
+    # Format A: full date + address + beds + area + price on one line
     single_sale_pat = re.compile(
         r'^(\d+\w+\s+\w+\s+\d{4})\s+(.+?)\s+(\d+)\s+([\d,\.]+)\s+AED\s*([\d,]+)'
     )
-    # 3-line date pattern
+    # Format B: date-month alone on its own line
     date_part_pat = re.compile(r'^(\d+(?:st|nd|rd|th)\s+\w+)$')
+    # Format C: date-month + address on one line
+    date_addr_pat = re.compile(r'^(\d+(?:st|nd|rd|th)\s+\w{3,})\s+(.+)$')
+    # Format C: beds + area + price on the following line
+    bap_pat = re.compile(r'^(\d+)\s+([\d,\.]+)\s+AED\s*([\d,]+)$')
 
     i = 0
     while i < len(lines):
@@ -222,19 +227,36 @@ def parse(pdf_path: str) -> dict:
         if in_sales and re.search(r'View more|Powered by|Property History|Similar Properties', line):
             in_sales = False
         if in_sales:
-            # Try single-line format first
+            # Format A: everything on one line
             sm = single_sale_pat.match(line)
             if sm:
                 sales.append({
-                    'date':     sm.group(1).strip(),
-                    'address':  sm.group(2).strip(),
-                    'beds':     int(sm.group(3)),
-                    'area_sqft':int(float(sm.group(4).replace(',', ''))),
-                    'price':    _parse_aed(sm.group(5)),
+                    'date':      sm.group(1).strip(),
+                    'address':   sm.group(2).strip(),
+                    'beds':      int(sm.group(3)),
+                    'area_sqft': int(float(sm.group(4).replace(',', ''))),
+                    'price':     _parse_aed(sm.group(5)),
                 })
                 i += 1
                 continue
-            # Try 3-line format
+            # Format C: "25th Nov Riah Towers" / "1 1107 AED 1,350,000" / "2025"
+            da_m = date_addr_pat.match(line)
+            if da_m and i + 2 < len(lines):
+                bap_line = lines[i + 1].strip()
+                year_line = lines[i + 2].strip()
+                bap_m = bap_pat.match(bap_line)
+                yr_m  = re.match(r'^(\d{4})', year_line)
+                if bap_m and yr_m:
+                    sales.append({
+                        'date':      f'{da_m.group(1)} {yr_m.group(1)}',
+                        'address':   da_m.group(2).strip(),
+                        'beds':      int(bap_m.group(1)),
+                        'area_sqft': int(float(bap_m.group(2).replace(',', ''))),
+                        'price':     _parse_aed(bap_m.group(3)),
+                    })
+                    i += 3
+                    continue
+            # Format B: "11th Feb" alone / "Building 1 904 AED 1,050,000" / "2026"
             dm = date_part_pat.match(line)
             if dm and i + 2 < len(lines):
                 data_line = lines[i + 1].strip()
@@ -243,11 +265,11 @@ def parse(pdf_path: str) -> dict:
                 yr = re.match(r'^(\d{4})$', year_line)
                 if dr and yr:
                     sales.append({
-                        'date':     f'{dm.group(1)} {yr.group(1)}',
-                        'address':  dr.group(1).strip(),
-                        'beds':     int(dr.group(2)),
-                        'area_sqft':int(dr.group(3).replace(',', '')),
-                        'price':    _parse_aed(dr.group(4)),
+                        'date':      f'{dm.group(1)} {yr.group(1)}',
+                        'address':   dr.group(1).strip(),
+                        'beds':      int(dr.group(2)),
+                        'area_sqft': int(dr.group(3).replace(',', '')),
+                        'price':     _parse_aed(dr.group(4)),
                     })
                     i += 3
                     continue
