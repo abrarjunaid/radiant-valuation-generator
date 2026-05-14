@@ -84,6 +84,7 @@ def parse(pdf_path: str) -> dict:
             data['gross_yield'] = round(data['annual_rent'] / data['value'] * 100, 2)
         else:
             data['gross_yield'] = None
+        data['rental_transactions'] = []
 
     # ════════════════════════════════════════════════════════════════════════
     # RENTAL REPORT
@@ -110,6 +111,44 @@ def parse(pdf_path: str) -> dict:
         data['monthly_rent_low']  = _parse_aed(m.group(1)) if m else None
         data['monthly_rent_high'] = _parse_aed(m.group(2)) if m else None
         data['gross_yield'] = None
+
+        # ── Recent rental transactions ────────────────────────────────────────
+        # Format (5 lines): "AED 60,000" / "20th Apr" / "Building 1 819 NEW" / "2026" / "12 Months"
+        rental_txns = []
+        in_rental_txns = False
+        rent_price_pat = re.compile(r'^AED\s*([\d,]+)$')
+        rent_date_pat  = re.compile(r'^(\d+(?:st|nd|rd|th)\s+\w{3,})$')
+        rent_addr_pat  = re.compile(r'^(.+?)\s+(\d+)\s+([\d,]+)\s+(?:NEW|RENEWAL)$', re.I)
+        rent_year_pat  = re.compile(r'^(\d{4})$')
+
+        j = 0
+        while j < len(lines):
+            ln = lines[j].strip()
+            if re.search(r'Recently Rented', ln):
+                in_rental_txns = True
+            if in_rental_txns and re.search(r'View more similar transactions', ln):
+                in_rental_txns = False
+            if in_rental_txns and j + 3 < len(lines):
+                pm = rent_price_pat.match(ln)
+                if pm:
+                    date_ln = lines[j + 1].strip()
+                    addr_ln = lines[j + 2].strip()
+                    year_ln = lines[j + 3].strip()
+                    dm = rent_date_pat.match(date_ln)
+                    am = rent_addr_pat.match(addr_ln)
+                    ym = rent_year_pat.match(year_ln)
+                    if dm and am and ym:
+                        rental_txns.append({
+                            'date':        f'{dm.group(1)} {ym.group(1)}',
+                            'address':     am.group(1).strip(),
+                            'beds':        int(am.group(2)),
+                            'area_sqft':   int(am.group(3).replace(',', '')),
+                            'annual_rent': _parse_aed(pm.group(1)),
+                        })
+                        j += 5
+                        continue
+            j += 1
+        data['rental_transactions'] = rental_txns
 
     # ── Property type ─────────────────────────────────────────────────────────
     for ptype in ('Apartment', 'Villa', 'Townhouse', 'Penthouse', 'Studio'):

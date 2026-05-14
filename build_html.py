@@ -181,6 +181,7 @@ def build_html(data: dict, agent_name: str, insights: list) -> str:
     range_high = data.get('range_high')
     sales = data.get('comparable_sales', [])
     listings = data.get('active_listings', [])
+    rental_txns = data.get('rental_transactions', [])
     gross_yield = data.get('gross_yield')
 
     # Acquisition cost
@@ -257,6 +258,24 @@ def build_html(data: dict, agent_name: str, insights: list) -> str:
               <td style="text-align:right">{s.get("area_sqft",""):,}</td>
               <td style="text-align:right">{_fmt_aed(s.get("price"))}</td>
               <td style="text-align:right;color:#B8975A">{_fmt_aed(psf_s)}</td>
+            </tr>''')
+        return '\n'.join(rows)
+
+    # ── Rental transaction rows (rental reports only) ─────────────────────────
+    def rental_txn_rows():
+        if not rental_txns:
+            return '<tr><td colspan="5" style="text-align:center;color:#6b7a99;padding:16px">No rental transaction data available</td></tr>'
+        rows = []
+        for t in rental_txns[:10]:
+            psf_r = round(t['annual_rent'] / t['area_sqft']) if t.get('area_sqft') and t['area_sqft'] > 0 else None
+            rows.append(f'''
+            <tr>
+              <td>{t.get("date","")}</td>
+              <td>{t.get("address","")}</td>
+              <td style="text-align:center">{t.get("beds","")}</td>
+              <td style="text-align:right">{t.get("area_sqft",""):,}</td>
+              <td style="text-align:right">{_fmt_aed(t.get("annual_rent"))}</td>
+              <td style="text-align:right;color:#B8975A">{_fmt_aed(psf_r)}</td>
             </tr>''')
         return '\n'.join(rows)
 
@@ -841,7 +860,7 @@ def build_html(data: dict, agent_name: str, insights: list) -> str:
 
   <div class="page-content">
     <div class="table-section">
-      <div class="section-header">RECENT SALES TRANSACTIONS · <span>{len(sales)} comparable sales recorded</span></div>
+      {'<div class="section-header">RECENT RENTAL TRANSACTIONS · <span>' + str(len(rental_txns)) + ' comparable leases recorded</span></div>' if is_rent else '<div class="section-header">RECENT SALES TRANSACTIONS · <span>' + str(len(sales)) + ' comparable sales recorded</span></div>'}
       <div class="table-wrapper">
         <table class="data-table">
           <thead>
@@ -850,19 +869,19 @@ def build_html(data: dict, agent_name: str, insights: list) -> str:
               <th>DEVELOPMENT</th>
               <th style="text-align:center">BEDS</th>
               <th style="text-align:right">AREA (SQFT)</th>
-              <th style="text-align:right">SOLD AT</th>
+              {'<th style="text-align:right">ANNUAL RENT</th>' if is_rent else '<th style="text-align:right">SOLD AT</th>'}
               <th style="text-align:right">PRICE / SQFT</th>
             </tr>
           </thead>
           <tbody>
-            {sales_rows()}
+            {rental_txn_rows() if is_rent else sales_rows()}
           </tbody>
         </table>
       </div>
     </div>
 
     <div class="table-section">
-      <div class="section-header">ACTIVE LISTINGS FOR SALE · <span>{len(listings)} comparable units advertised</span></div>
+      {'<div class="section-header">ACTIVE LISTINGS FOR RENT · <span>' + str(len(listings)) + ' comparable units advertised</span></div>' if is_rent else '<div class="section-header">ACTIVE LISTINGS FOR SALE · <span>' + str(len(listings)) + ' comparable units advertised</span></div>'}
       <div class="table-wrapper">
         <table class="data-table">
           <thead>
@@ -870,7 +889,7 @@ def build_html(data: dict, agent_name: str, insights: list) -> str:
               <th>PROPERTY</th>
               <th style="text-align:center">BEDS</th>
               <th style="text-align:right">AREA (SQFT)</th>
-              <th style="text-align:right">LISTING PRICE</th>
+              {'<th style="text-align:right">ANNUAL RENT</th>' if is_rent else '<th style="text-align:right">LISTING PRICE</th>'}
             </tr>
           </thead>
           <tbody>
