@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.local
+*.pdf
+*.log
+.DS_Store
+.claude/
